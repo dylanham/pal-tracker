@@ -20,5 +20,8 @@ run:
   - |
     cd pal-tracker
     chmod +x gradlew
-    ./gradlew -P version=$(cat ../version/number) build
+    ./gradlew -P version=$(cat ../version/number) clean build
     cp build/libs/pal-tracker-*.jar ../build-output
+
+    ./gradlew -P version=$(cat ../version/number) -p migrations clean build
+    cp migrations/build/libs/pal-tracker-migrations-*.jar ../build-output

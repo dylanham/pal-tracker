@@ -1,0 +1,6 @@
+applications:
+- name: pal-tracker-migrations
+  path: build/libs/pal-tracker-migrations.jar
+  no-route: true
+  health-check-type: none
+  instances: 0

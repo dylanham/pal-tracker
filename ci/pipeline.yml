@@ -11,7 +11,15 @@ resources:
   type: s3
   source:
     bucket: {{aws-bucket}}
-    regexp: releases/pal-tracker-(.*).jar
+    regexp: releases/pal-tracker-(\d.*).jar
+    access_key_id: {{aws-access-key-id}}
+    secret_access_key: {{aws-secret-access-key}}
+
+- name: pal-tracker-migration-artifacts
+  type: s3
+  source:
+    bucket: {{aws-bucket}}
+    regexp: releases/pal-tracker-migrations-(.*).jar
     access_key_id: {{aws-access-key-id}}
     secret_access_key: {{aws-secret-access-key}}
 
@@ -24,6 +32,15 @@ resources:
     secret_access_key: {{aws-secret-access-key}}
 
 - name: review-deployment
+  type: cf
+  source:
+    api: {{cf-api-url}}
+    username: {{cf-username}}
+    password: {{cf-password}}
+    organization: {{cf-org}}
+    space: review
+
+- name: review-migrations-deployment
   type: cf
   source:
     api: {{cf-api-url}}
@@ -52,7 +69,10 @@ jobs:
     file: pal-tracker/ci/build.yml
   - put: pal-tracker-artifacts
     params:
-      file: build-output/pal-tracker-*.jar
+      file: build-output/pal-tracker-[0-9]*.jar
+  - put: pal-tracker-migration-artifacts
+    params:
+      file: build-output/pal-tracker-migrations-*.jar
   - put: version
     params:
       file: version/number
@@ -64,6 +84,14 @@ jobs:
   - get: pal-tracker-artifacts
     trigger: true
     passed: [build]
+  - get: pal-tracker-migration-artifacts
+    trigger: true
+    passed: [build]
+  - put: review-migrations-deployment
+    params:
+      manifest: pal-tracker/migrations/manifest-migrations-review.yml
+      path: pal-tracker-migration-artifacts/pal-tracker-migrations-*.jar
+      no-start: true
   - task: migrate database
     file: pal-tracker/ci/migrateDatabase.yml
     params:
@@ -72,10 +100,6 @@ jobs:
       CF_PASSWORD: {{cf-password}}
       CF_ORG: {{cf-org}}
       CF_SPACE: review
-      MYSQL_IP: {{mysql-ip}}
-      DATABASE_NAME: {{review-database-name}}
-      DATABASE_USERNAME: {{review-database-username}}
-      DATABASE_PASSWORD: {{review-database-password}}
   - put: review-deployment
     params:
       manifest: pal-tracker/manifest-review.yml
@@ -97,10 +121,6 @@ jobs:
       CF_PASSWORD: {{cf-password}}
       CF_ORG: {{cf-org}}
       CF_SPACE: production
-      MYSQL_IP: {{mysql-ip}}
-      DATABASE_NAME: {{production-database-name}}
-      DATABASE_USERNAME: {{production-database-username}}
-      DATABASE_PASSWORD: {{production-database-password}}
   - put: production-deployment
     params:
       manifest: pal-tracker/manifest-production.yml
